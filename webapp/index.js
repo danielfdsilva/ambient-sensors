@@ -3,6 +3,8 @@
 var moment = require('moment'); 
 var express = require('express');
 var app = express();
+var http = require('http').Server(app);
+var io = require('socket.io')(http);
 
 // Serial data is a singleton.
 var serialData = require('./app/utils/serialData');
@@ -18,8 +20,8 @@ var sensorData = {
 
 ///////////////////////////////////////////////////////////
 // Setup Arduino connection through serialport.
-startServer();
-var serialport = new SerialPort('/dev/null', {
+
+var serialport = new SerialPort('COM6', {
   baudrate: 115200,
   // defaults for Arduino serial communication
   dataBits: 8,
