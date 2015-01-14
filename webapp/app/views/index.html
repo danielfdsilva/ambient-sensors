@@ -33,8 +33,21 @@
   <body>
     <h1>Temperature Variation</h1>
     <div id="temp-chart"></div>
-
+    <script src="/socket.io/socket.io.js"></script>
     <script>
+      var socket = io();
+      socket.on('initialData', function (data) {
+        console.log(data);
+      });
+      socket.on('tempReading', function (data) {
+        console.log(data);
+      });
+      socket.on('micReading', function (data) {
+        console.log(data);
+      });
+      socket.on('pirReading', function (data) {
+        console.log(data);
+      });
       // Set the dimensions of the canvas / graph
       var margin = {
         top : 30,
