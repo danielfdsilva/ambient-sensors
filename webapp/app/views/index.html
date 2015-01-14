@@ -31,23 +31,14 @@
 
   </head>
   <body>
-    <h1>Temperature Variation</h1>
+    <h1>Temperature Variation <small class="curr-temp"></small></h1>
     <div id="temp-chart"></div>
     <script src="/socket.io/socket.io.js"></script>
     <script>
       var socket = io();
-      socket.on('initialData', function (data) {
-        console.log(data);
-      });
-      socket.on('tempReading', function (data) {
-        console.log(data);
-      });
-      socket.on('micReading', function (data) {
-        console.log(data);
-      });
-      socket.on('pirReading', function (data) {
-        console.log(data);
-      });
+      
+      var tempData = [];
+
       // Set the dimensions of the canvas / graph
       var margin = {
         top : 30,
@@ -92,21 +83,22 @@
         .append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-      // Get the data
-      d3.json("http://localhost:3000/sensor/temperature", function(error, data) {
-      
+      function initTempChart(data) {
         data.forEach(function(d) {
           d.date = parseDate(d.date);
         });
 
+        // Store.
+        tempData = data;
+
         // Scale the range of the data
-        x.domain(d3.extent(data, function(d) {
+        x.domain(d3.extent(tempData, function(d) {
           return d.date;
         }));
         y.domain([10, 26]);
 
         // Add the valueline path.
-        svg.append("path").attr("class", "line").attr("d", valueline(data));
+        svg.append("path").attr("class", "line").attr("d", valueline(tempData));
 
         // Add the X Axis
         svg.append("g").attr("class", "x axis").attr("transform", "translate(0," + height + ")").call(xAxis);
@@ -114,32 +106,46 @@
         // Add the Y Axis
         svg.append("g").attr("class", "y axis").call(yAxis);
 
-      });
+      }
       
-      setInterval(function() {
-        // Get the data
-        d3.json("http://localhost:3000/sensor/temperature", function(error, data) {
-          data.forEach(function(d) {
-            d.date = parseDate(d.date);
-            d.close = +d.close;
-          });
-          
-          // Scale the range of the data
-          x.domain(d3.extent(data, function(d) {
-            return d.date;
-          }));
-          
-          // Select the section we want to apply our changes to
-          var svg = d3.select("#temp-chart").transition();
+      function updateTempChart(data) {
+        data.date = parseDate(data.date);
+        tempData.push(data);
+        
+        // Scale the range of the data
+        x.domain(d3.extent(tempData, function(d) {
+          return d.date;
+        }));
+        
+        // Select the section we want to apply our changes to
+        var svg = d3.select("#temp-chart").transition();
 
-          // Make the changes
-          svg.select(".line")// change the line
-          .duration(750).attr("d", valueline(data));
-          svg.select(".x.axis")// change the x axis
-          .duration(750).call(xAxis);
-          
-        });
-      }, 10000);
+        // Make the changes
+        svg.select(".line")// change the line
+        .duration(750).attr("d", valueline(tempData));
+        svg.select(".x.axis")// change the x axis
+        .duration(750).call(xAxis);
+      };
+
+      socket.on('initialData', function (data) {
+        console.log(data);
+        initTempChart(data.temp);
+      });
+
+      socket.on('tempReading', function (data) {
+        console.log(data);
+        d3.select('.curr-temp').text('(now: ' + data.value + 'ºC)');
+        updateTempChart(data);
+      });
+
+      socket.on('micReading', function (data) {
+        console.log(data);
+      });
+
+      socket.on('pirReading', function (data) {
+        console.log(data);
+      });
+
     </script>
   </body>
 </html>
