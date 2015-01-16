@@ -7,6 +7,12 @@
     <!-- load the d3.js library -->
     <script src="http://d3js.org/d3.v3.min.js"></script>
 
+    <!-- load jquery -->
+    <script src="//code.jquery.com/jquery-2.1.3.min.js"></script>
+
+    <!-- Socket io -->
+    <script src="/socket.io/socket.io.js"></script>
+
     <style> /* set the CSS */
       body {
         font: 12px Arial;
@@ -26,26 +32,57 @@
         stroke-width: 1;
         shape-rendering: crispEdges;
       }
+
+      #temp-chart {
+        margin-top: 50px;
+        clear: both;
+      }
+      #temp-chart h1 {
+        font-size: 30px;
+        margin: 0 0 20px 0;
+      }
+      #beer-gif {
+        overflow: auto;;
+      }
+      #beer-gif img {
+        display: block;
+        float: left;
+        margin-right: 30px;
+      }
+      #beer-gif h1 {
+        font-size: 54px;
+        margin: 0 0 20px 0 ;
+      }
+
+      body {
+        padding-left: 100px;
+      }
     </style>
 
 
   </head>
   <body>
-    <h1>Temperature Variation <small class="curr-temp"></small></h1>
-    <div id="temp-chart"></div>
-    <script src="/socket.io/socket.io.js"></script>
+
+    <section id="beer-gif" style="display: none">
+      <h1>Beer was served!</h1>
+      <img id="who" src="" width="700" style="display: none">
+      <img id="gif" src="" alt="The gif" width="500" />
+    </section>
+
+    <section id="temp-chart">
+      <h1>Temperature Variation <small class="curr-temp"></small></h1>
+    </section>
+
+
     <script>
       var socket = io();
       
       var tempData = [];
 
       // Set the dimensions of the canvas / graph
-      var margin = {
-        top : 30,
-        right : 20,
-        bottom : 30,
-        left : 50
-      }, width = 600 - margin.left - margin.right, height = 270 - margin.top - margin.bottom;
+      var margin = { top : 30, right : 20, bottom : 30, left : 50 };
+      var width = 600 - margin.left - margin.right;
+      var height = 200 - margin.top - margin.bottom;
 
       // Parse the date / time
       var parseDate = d3.time.format("%Y-%m-%d %H:%M:%S").parse;
@@ -95,7 +132,7 @@
         x.domain(d3.extent(tempData, function(d) {
           return d.date;
         }));
-        y.domain([10, 26]);
+        y.domain([18, 26]);
 
         // Add the valueline path.
         svg.append("path").attr("class", "line").attr("d", valueline(tempData));
@@ -127,23 +164,52 @@
         .duration(750).call(xAxis);
       };
 
+      ///////////////////////////////////////////////////////////////
+      // Beer GIFs
+
+      function newBeerGif() {
+        $.get('http://api.giphy.com/v1/gifs/random', {
+          api_key: 'dc6zaTOxFJmzC',
+          tag: 'beer'
+        }, function(res) {
+          $('#beer-gif #gif').attr('src', '');
+          $('#beer-gif #gif').attr('src', res.data.fixed_height_downsampled_url);
+          $('#beer-gif').show();
+        });
+      }
+
+      ///////////////////////////////////////////////////////////////
+      // Sockets all the way.
+
       socket.on('initialData', function (data) {
         console.log(data);
         initTempChart(data.temp);
       });
 
       socket.on('tempReading', function (data) {
-        console.log(data);
+        console.log('tempReading', data);
         d3.select('.curr-temp').text('(now: ' + data.value + 'ºC)');
         updateTempChart(data);
       });
 
       socket.on('micReading', function (data) {
-        console.log(data);
+        console.log('micReading', data);
       });
 
       socket.on('pirReading', function (data) {
-        console.log(data);
+        console.log('pirReading', data)
+        if (data.value) {
+          newBeerGif();
+        }
+        // else {
+        //   $('#beer-gif').hide();
+        // }
+      });
+
+      socket.on('pirPhoto', function (name) {
+        console.log('photo', name);
+        $('#who').attr('src', '/photos/' + name);
+        $('#who').show();
       });
 
     </script>

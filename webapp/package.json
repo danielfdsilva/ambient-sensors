@@ -7,7 +7,8 @@
     "express": "^4.10.7",
     "moment": "^2.9.0",
     "serialport": "^1.4.6",
-    "socket.io": "^1.2.1"
+    "socket.io": "^1.2.1",
+    "gphoto2": "~0.1.6"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

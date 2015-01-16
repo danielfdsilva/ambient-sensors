@@ -2,9 +2,10 @@
 const int tempSensorPin = A0;
 const int pirSensorPin = 3;
 const int micSensorPin = 5;
+const int piezoPin = 8;
 const int calibrationTime = 30;
 long interval = 20000;
-long unsigned int pirPause = 5000;
+long unsigned int pirPause = 3000;
 long unsigned int micPause = 5000;
 
 unsigned long prevTime = 0;
@@ -12,6 +13,7 @@ unsigned long currTime = 0;
 boolean pirIsTriggered = false;
 boolean savePIRTime = false;
 long unsigned int pirIn;
+long unsigned int piezoStartTime;
 boolean micIsTriggered = false;
 boolean saveMICTime = false;
 long unsigned int micIn;
@@ -36,7 +38,7 @@ void setup() {
   Serial.println("SN:Setup Complete");
 }
 
-void loop() {
+void loop() {  
   ////
   // MIC
   ////
@@ -67,7 +69,9 @@ void loop() {
   if(digitalRead(pirSensorPin) == LOW) {
     if (pirIsTriggered == false) {
       pirIsTriggered = true;
+      piezoStartTime = millis();
       Serial.println("PIR:1");
+      tone(piezoPin, 349);
     }
     savePIRTime = true;
   }
@@ -75,6 +79,9 @@ void loop() {
     if (savePIRTime) {
       pirIn = millis();
       savePIRTime = false;
+    }
+    if (pirIsTriggered == true && millis() - piezoStartTime > 1500) {
+     noTone(piezoPin);
     }
     if (pirIsTriggered == true && millis() - pirIn > pirPause) {
      pirIsTriggered = false;

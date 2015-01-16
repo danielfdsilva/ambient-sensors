@@ -11,6 +11,10 @@ var serialData = require('./app/utils/serialData');
 var SerialPort = require('serialport').SerialPort;
 var SerialParsers = require('serialport').parsers;
 
+var gphoto2 = require('gphoto2');
+var GPhoto = new gphoto2.GPhoto2();
+var fs = require('fs');
+
 // The data since start.
 var sensorData = {
   temp: [],
@@ -19,9 +23,25 @@ var sensorData = {
 };
 
 ///////////////////////////////////////////////////////////
+// Setup Camera.
+
+// When the server starts the camera should already have been picked.
+// If is not available too bad.
+var camera = null;
+GPhoto.list(function (list) {
+  if (list.length === 0) {
+    console.log('No cameras');
+    return;
+  }
+
+  camera = list[0];
+  console.log('Found', camera.model);
+});
+
+///////////////////////////////////////////////////////////
 // Setup Arduino connection through serialport.
 
-var serialport = new SerialPort('COM6', {
+var serialport = new SerialPort('/dev/ttyACM0', {
   baudrate: 115200,
   // defaults for Arduino serial communication
   dataBits: 8,
@@ -75,7 +95,7 @@ serialData.on('tempReading', function(tmp) {
 });
 
 serialData.on('micReading', function(tmp) {
-  var soundDetected = tmp;
+  var soundDetected = parseInt(tmp) === 1;
   var date = moment().format('YYYY-MM-DD H:mm:ss');
   var data = {
     date: date,
@@ -89,7 +109,7 @@ serialData.on('micReading', function(tmp) {
 });
 
 serialData.on('pirReading', function(tmp) {
-  var motionDetected = tmp;
+  var motionDetected = parseInt(tmp) === 1;;
   var date = moment().format('YYYY-MM-DD H:mm:ss');
   var data = {
     date: date,
@@ -97,34 +117,29 @@ serialData.on('pirReading', function(tmp) {
   };
   sensorData.pir.push(data);
   console.log(date, data);
-  
+
   // Send via websocket
   io.emit('pirReading', data);
+
+  if (motionDetected && camera !== null) {
+    // Take picture with camera;
+    camera.takePicture({download: true}, function (er, data) {
+      var name = Date.now() + '.jpg';
+      fs.writeFileSync(__dirname + '/photos/' + name, data);
+      io.emit('pirPhoto', name);
+    });
+  }
+  
 });
 
 ///////////////////////////////////////////////////////////
 // Express
 
+
+app.use('/photos/', express.static('photos'));
+
 app.get('/', function (req, res) {
   res.sendFile(__dirname + '/app/views/index.html');
-});
-
-app.get('/sensor/:sensor?', function (req, res) {
-  if (!req.params.sensor) {
-    return res.send(sensorData);
-  }
-  
-  switch(req.params.sensor) {
-    case 'temperature':
-      return res.send(sensorData.temp);
-    case 'infrared':
-      return res.send(sensorData.pir);
-    case 'microphone':
-      return res.send(sensorData.mic);      
-    default:
-      return res.send(sensorData);
-  }
-  
 });
 
 ///////////////////////////////////////////////////////////
